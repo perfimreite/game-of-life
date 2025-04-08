@@ -1,0 +1,15 @@
+{
+    "name": "btd",
+    "version": "1.0.0",
+    "main": "main.js",
+    "type": "module",
+    "scripts": {
+        "dev": "node_modules/typescript/bin/tsc -w"
+    },
+    "author": "",
+    "license": "ISC",
+    "description": "",
+    "dependencies": {
+        "typescript": "^5.8.2"
+    }
+}
