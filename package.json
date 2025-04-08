@@ -1,14 +1,14 @@
 {
-    "name": "btd",
+    "name": "Game of Life",
     "version": "1.0.0",
     "main": "main.js",
     "type": "module",
     "scripts": {
         "dev": "node_modules/typescript/bin/tsc -w"
     },
-    "author": "",
+    "author": "Per Fimreite",
     "license": "ISC",
-    "description": "",
+    "description": "Implementation of John Conway's Game of Life in typescipt with html canvas",
     "dependencies": {
         "typescript": "^5.8.2"
     }
