@@ -3,130 +3,148 @@ const GAME_HEIGHT = 800;
 const CELL_SIZE = 40;
 const ROWS = GAME_HEIGHT / CELL_SIZE
 const COLS = GAME_WIDTH / CELL_SIZE
+const SLEEP_MS = 500;
 
 type Vec2 = {
-	x: number,
-	y: number,
+    x: number,
+    y: number,
 }
 
-function drawMap(ctx: CanvasRenderingContext2D, map: number[][]): void {
-	for (let y = 0; y < GAME_HEIGHT; y += CELL_SIZE) {
-		for (let x = 0; x < GAME_HEIGHT; x += CELL_SIZE) {
-			if (map[y / CELL_SIZE][x / CELL_SIZE]) {
-				ctx.fillStyle = 'blue';
-				ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
-			} else {
-				ctx.fillStyle = 'white';
-				ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
-			}
-		}
-	}
-	for (let y = 0; y <= GAME_HEIGHT; y += CELL_SIZE) {
-		ctx.beginPath();
-		ctx.strokeStyle = 'black';
-		ctx.moveTo(0, y);
-		ctx.lineTo(GAME_WIDTH, y);
-		ctx.closePath();
-		ctx.stroke();
-	}
-	for (let x = 0; x <= GAME_WIDTH; x += CELL_SIZE) {
-		ctx.beginPath();
-		ctx.strokeStyle = 'black';
-		ctx.moveTo(x, 0);
-		ctx.lineTo(x, GAME_HEIGHT);
-		ctx.closePath();
-		ctx.stroke();
-	}
+type Grid = number[][]
+
+function drawGrid(ctx: CanvasRenderingContext2D, grid: Grid): void {
+    // draw cells
+    for (let y = 0; y < GAME_HEIGHT; y += CELL_SIZE) {
+        for (let x = 0; x < GAME_HEIGHT; x += CELL_SIZE) {
+            if (grid[y / CELL_SIZE][x / CELL_SIZE] === 1) {
+                ctx.fillStyle = "blue";
+                ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
+            } else {
+                ctx.fillStyle = "white";
+                ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
+            }
+        }
+    }
+
+    // draw grid lines
+    for (let y = 0; y < GAME_HEIGHT; y += CELL_SIZE) {
+        ctx.beginPath();
+        ctx.strokeStyle = "black";
+        ctx.moveTo(0, y);
+        ctx.lineTo(GAME_WIDTH - 1, y);
+        ctx.closePath();
+        ctx.stroke();
+    }
+    for (let x = 0; x < GAME_WIDTH; x += CELL_SIZE) {
+        ctx.beginPath();
+        ctx.strokeStyle = "black";
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, GAME_HEIGHT - 1);
+        ctx.closePath();
+        ctx.stroke();
+    }
 }
 
-// param should be vec2
-function getCell(x0: number, y0: number): Vec2 {
-	return { x: Math.floor(x0 / CELL_SIZE), y: Math.floor(y0 / CELL_SIZE)}
+function getCell(pos: Vec2): Vec2 {
+    return { x: Math.floor(pos.x / CELL_SIZE), y: Math.floor(pos.y / CELL_SIZE)}
 }
 
-function markCell(ctx: CanvasRenderingContext2D, map: number[][], x: number, y: number): void {
-	map[y][x] = map[y][x] ? 0 : 1;
+function markCell(grid: Grid, pos: Vec2): void {
+    grid[pos.y][pos.x] = grid[pos.y][pos.x] === 0 ? 1 : 0;
 }
 
-function equalMaps(a: number[][], b: number[][]): boolean {
-	for (let y = 0; y < ROWS; ++y) {
-		for (let x = 0; x < COLS; ++x) {
-			if (a[y][x] !== b[y][x]) return false;
-		}
-	}
-	return true;
+function equalGrids(a: Grid, b: Grid): boolean {
+    for (let y = 0; y < ROWS; ++y) {
+        for (let x = 0; x < COLS; ++x) {
+            if (a[y][x] !== b[y][x]) return false;
+        }
+    }
+    return true;
 }
 
-function getNeighbors(map: number[][], cx: number, cy: number): number {
-	let n = 0;
-	for (let y = cy - 1; y <= cy + 1; ++y) {
-		for (let x = cx - 1; x <= cx + 1; ++x) {
-			if ((y < 0 || y >= ROWS) || (x < 0 || x >= COLS)) continue;
-			if (y === cy && x === cx) continue;
-			if (map[y][x]) n += 1;	
-		}
-	}
-	return n;
+function oob(x: number, y: number): boolean {
+    return y < 0 || y >= ROWS || x < 0 || x >= COLS;
+}
+
+function neighbors(grid: Grid, cell: Vec2): number {
+    let n = 0;
+    for (let y = cell.y - 1; y <= cell.y + 1; ++y) {
+        for (let x = cell.x - 1; x <= cell.x + 1; ++x) {
+            if (oob(x, y) || (y === cell.y && x === cell.x)) {
+                continue;
+            }
+
+            if (grid[y][x] === 1) {
+                n += 1
+            }
+        }
+    }
+    return n;
+}
+
+function clearGrid(): Grid {
+    console.clear();
+    let grid = [];
+    for (let y = 0; y < ROWS; y++) {
+        let row = [];
+        for (let x = 0; x < COLS; x++) {
+            row.push(0);
+        }
+        grid.push(row);
+    }
+    return grid;
 }
 
 (() => {
-	const game = <HTMLCanvasElement> document.getElementById('game'); 
-	if (game === null) throw new Error('ERROR: could not get game');
+    const game = <HTMLCanvasElement> document.getElementById("game"); 
+    if (game === null) throw new Error("ERROR: could not get game");
 
-	const ctx = game.getContext('2d');
-	if (ctx === null) throw new Error('ERROR: could not get context');
+    const ctx = game.getContext("2d");
+    if (ctx === null) throw new Error("ERROR: could not get context");
 
-	const start = document.getElementById('start');
-	if (start === null) throw new Error('ERROR: `start`-btn was not found');
-	
-	// const map = Array(ROWS).fill(Array(COLS).fill(0));
+    const start = document.getElementById("start");
+    if (start === null) throw new Error("ERROR: `start`-btn was not found");
 
-	const map = [
-		[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-		[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-		[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-		[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-		[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-		[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-		[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-		[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-		[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-		[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-		[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-		[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-		[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-		[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-		[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-		[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-	]
+    const clearGridBtn = document.getElementById("clear-grid");
+    if (clearGridBtn === null) throw new Error("ERROR: `clearGridBtn` was not found");
 
-	drawMap(ctx, map);
+    let grid = clearGrid();
+    drawGrid(ctx, grid);
 
-	game.addEventListener('click', (event) => {
-		const pos = getCell(event.offsetX, event.offsetY);
-		markCell(ctx, map, pos.x, pos.y);
-		drawMap(ctx, map);
-	})
+    clearGridBtn.addEventListener("click", () => {
+        grid = clearGrid();
+        drawGrid(ctx, grid);
+    })
 
-	start.addEventListener('click', () => {
-		let i = 0;
-		let oldMap = [...map];
-		while (!equalMaps(map, oldMap) || i === 0) {
-			i += 1;
-			console.log("INFO: iteration", i);
-			console.log(map);
-			for (let cy = 0; cy < ROWS; ++cy) {
-				for (let cx = 0; cx < COLS; ++cx) {
-					const neighbors = getNeighbors(oldMap, cx, cy);
-					console.log(cx, cy, neighbors);
-					if (neighbors > 0) console.log(cx, cy, neighbors);
-					if (neighbors < 2 || neighbors > 3) map[cy][cx] = 0;
-					else if (neighbors == 3 && !map[cy][cx]) map[cy][cx] = 1;
-				}
-			}
-			oldMap = [...map];
-		}
+    game.addEventListener("click", (e) => {
+        const pos = getCell({ x: e.offsetX, y: e.offsetY });
+        markCell(grid, pos);
+        drawGrid(ctx, grid);
+    })
 
-		console.log("INFO: simulation over...");
-	})
+    start.addEventListener("click", async () => {
+        let finished = false;
+        while (!finished){
+            let nextGrid = clearGrid();
+
+            for (let cy = 0; cy < ROWS; ++cy) {
+                for (let cx = 0; cx < COLS; ++cx) {
+                    const cell = { x: cx, y: cy };
+                    const n = neighbors(grid, cell);
+
+                    if (n == 3 || (n == 2 && grid[cy][cx] === 1)) {
+                        nextGrid[cy][cx] = 1;
+                    }
+                }
+            }
+
+            finished = equalGrids(grid, nextGrid);
+
+            grid = [...nextGrid];
+            drawGrid(ctx, grid);
+
+            await new Promise(resolve => setTimeout(resolve, SLEEP_MS));
+        }
+    })
 })()
+
